@@ -1,0 +1,260 @@
+You are a Principal Mobile UI Architect and React Native (Expo) Engineer. Your task is to translate the attached Google Stitch screen designs and `design.md` into a **complete, interactive, production-grade mobile frontend prototype** for **SajiAman** — a Closed-Loop Food Safety, Reusable Container (*Ompreng*), and Zero-Waste Maggot Bioconversion app for Indonesia's *Program Makan Bergizi Gratis (MBG)*.
+
+---
+
+### 1. TARGET PRODUCTION STACK & AI STUDIO PORTABILITY ARCHITECTURE
+
+#### A. Target Local Production Stack (Design & Architect Strictly for This)
+This prototype will be migrated directly to my local mobile repository using:
+- **Framework:** React Native + **Expo (SDK 52+)** with **Expo Router** (file-based navigation: `(auth)/`, `(kitchen)/`, `(school)/`).
+- **Language:** TypeScript (strict mode).
+- **Styling:** **NativeWind v4** (Tailwind CSS for React Native).
+- **Icons:** `lucide-react-native` (1.75px stroke weight).
+- **State & Server Sync (Local Phase):** `@tanstack/react-query` + `react-native-mmkv` + **Supabase** (`@supabase/supabase-js` with PostgreSQL RPC & Storage).
+- **Native Hardware Modules (Local Phase):** `expo-camera` (live photo capture & QR scanner), `react-native-qrcode-svg`, `expo-haptics`.
+
+#### B. AI Studio Browser Preview Strategy (Zero-Crash, 1:1 Migration Ready)
+Because AI Studio previews in a web runtime, build the preview using **React 18 + TypeScript + Vite + Tailwind CSS + `lucide-react`**, while enforcing **strict React Native / Expo portability constraints**:
+1. **NativeWind-Safe Layout & Styling Only:**
+   - Use **Flexbox (`flex`, `flex-col`, `flex-row`, `items-center`, `justify-between`, `gap-*`)** as the primary layout primitive—mirroring React Native's Yoga engine. Avoid complex CSS Grid templates that do not translate cleanly to NativeWind.
+   - Avoid hover-only interactions (`hover:` may be subtle on desktop, but every interaction must work purely on tap/press with crisp `active:scale-[0.98]` or `active:opacity-80` press feedback).
+   - Avoid unportable CSS features (no `backdrop-filter` glassmorphism, no multi-layered box shadows, no CSS keyframe gimmicks).
+2. **Strict Adapter Boundary (`src/adapters/`):**
+   Isolate every Expo native capability behind typed interfaces with clean web-preview mocks and `// TODO(expo-migration): Swap with <package>` comments:
+   - `src/adapters/cameraAdapter.ts` → Web simulation / `getUserMedia` fallback (maps to `expo-camera` live-only capture, gallery disabled).
+   - `src/adapters/qrAdapter.ts` → Crisp SVG QR renderer + instant scan simulator (maps to `react-native-qrcode-svg` & `expo-camera` BarcodeScanning).
+   - `src/adapters/storageAdapter.ts` → `localStorage` persistence wrapper (maps to `react-native-mmkv` & Supabase Repository).
+   - `src/adapters/hapticsAdapter.ts` → No-op / `navigator.vibrate` (maps to `expo-haptics`).
+3. **Clean Folder Architecture (Mirroring Expo Project Structure):**
+   - `src/theme/tokens.ts` — Single source of truth for all colors, typography, radii, and spacing tokens (directly reusable in `tailwind.config.js` for NativeWind).
+   - `src/types/sajiaman.ts` — Strongly typed domain models aligned with future Supabase PostgreSQL tables (`batches`, `batch_items`, `ompreng_logs`, `maggot_reports`, `schools`, `kitchens`).
+   - `src/domain/weakestLinkEngine.ts` — 100% pure TypeScript functions (zero React/DOM dependencies) for holding-time calculation, real-time `GREEN` / `YELLOW` / `RED` evaluation, and countdown formatting.
+   - `src/data/mockRepository.ts` — Async repository pattern (`Promise`-based) seeded with realistic Indonesian MBG data so swapping to `@supabase/supabase-js` later requires changing only this file.
+   - `src/context/SajiAmanContext.tsx` — Shared state linking Kitchen and School flows live.
+   - `src/components/ui/` — Reusable Expo-portable primitives (`CivicButton`, `HairlineCard`, `TrafficBanner`, `MonoCounter`, `TactileChip`, `StepHeader`, `BottomTabBar`).
+   - `src/screens/auth/`, `src/screens/kitchen/`, `src/screens/school/` — Modular screen components matching Expo Router routes.
+
+#### C. Mobile Shell & External QA Simulator Bar
+- Render the mobile application inside a centered, precision phone container (`w-full max-w-[390px] h-[844px] overflow-hidden rounded-[36px] border-[6px] border-[#0F172A] bg-[#F4F7FA]`) on a neutral slate backdrop (`#E2E8F0`) on desktop, and full-bleed `100vw x 100dvh` on actual mobile viewports.
+- **Outside the phone frame (desktop sidebar or compact top bar ONLY):** Provide a sleek **"SajiAman QA & Clock Simulator"** panel so I can test the full 4-hour lifecycle instantly:
+  - System Clock Offset Buttons: `Reset Jam`, `+30m`, `+1 Jam`, `+3 Jam`, `+3.5 Jam`, `+4.5 Jam`.
+  - Quick Role Switcher: `Masuk Dapur (SPPG)` / `Masuk Sekolah`.
+  - `Reset Data Demo` button.
+
+---
+
+### 2. COMPREHENSIVE DESIGN SYSTEM SPECIFICATION (STRICT ANTI-AI-SLOP)
+
+#### A. Visual Direction: "Swiss-Utilitarian Civic Instrument"
+SajiAman is **not** a generic consumer food-delivery app. It is a **precision operational tool** built for two harsh real-world environments:
+1. Dim, humid, fast-paced MBG kitchens at **04:00 WIB** (wet hands, hurried chefs).
+2. Bright outdoor schoolyards at **11:30 WIB** (sun glare, busy picket teachers).
+
+**Mandatory Anti-AI-Slop Rules:**
+- **NO** generic soft drop shadows (`shadow-lg`, `shadow-xl`) to separate cards. Use crisp `1px solid #D8E2EC` hairline borders and deliberate surface tone contrast (`#F4F7FA` canvas vs `#FFFFFF` surface).
+- **NO** purple/cyan startup gradients, glowing neon blobs, glassmorphism, or decorative illustrations.
+- **NO** monotonous identical stacked cards across every screen. Every screen must have a distinct, task-driven visual silhouette (defined in Section 2E).
+- **NO** decorative traffic-light colors. Green, Amber, and Red are strictly reserved for **Food Safety Status** and critical operational alerts.
+
+#### B. Exact Color Tokens (`src/theme/tokens.ts`)
+- **Brand & Structural Blues (MBG Civic Identity):**
+  - `mbg-navy`: `#0B2E59` (Top headers, authoritative surfaces, brand anchor, dark thermal ticket header)
+  - `mbg-blue`: `#0F4C81` (Primary interactive CTA buttons, active tabs, selected chips)
+  - `mbg-blue-pressed`: `#0A355C` (Active/pressed button state)
+  - `mbg-blue-tint`: `#EBF3FA` (Subtle selected chip background, info callout surface)
+  - `mbg-blue-border`: `#BDD5EB` (Accent hairline border for active interactive items)
+- **Neutrals & Surfaces:**
+  - `canvas`: `#F4F7FA` (Main screen background)
+  - `surface`: `#FFFFFF` (Primary card/sheet surface)
+  - `surface-subtle`: `#EDF2F7` (Inset wells, segmented control track, disabled backgrounds)
+  - `border-hairline`: `#D8E2EC` (Standard 1px structural divider)
+  - `border-strong`: `#94A3B8` (Focused inputs, high-contrast ticket borders)
+  - `ink-primary`: `#0F172A` (Headings, critical figures)
+  - `ink-secondary`: `#475569` (Labels, metadata, supporting copy)
+  - `ink-muted`: `#64748B` (Timestamps, placeholders, inactive icons)
+- **Strict Semantic Food Safety Traffic Lights:**
+  - **SAFE (HIJAU — > 45 min remaining):**
+    - Solid Fill: `#15803D` | Soft Surface: `#DCFCE7` | Border: `#86EFAC` | Dark Text: `#14532D`
+  - **WARNING (KUNING — 1 to 45 min remaining):**
+    - Solid Fill: `#B45309` | Soft Surface: `#FEF3C7` | Border: `#FCD34D` | Dark Text: `#78350F`
+  - **EXPIRED / HARD LOCK (MERAH — <= 0 min remaining):**
+    - Solid Fill: `#B91C1C` | Soft Surface: `#FEE2E2` | Border: `#FCA5A5` | Dark Text: `#7F1D1D`
+
+#### C. Typography & Numeric Precision
+Load Google Fonts `Plus Jakarta Sans` (400, 500, 600, 700, 800) and `JetBrains Mono` (500, 600, 700).
+- **Display / Safety Verdict:** `Plus Jakarta Sans` 24px–26px, Weight 800, Line-Height 1.15, Tracking `-0.025em`, Uppercase for verdict banners.
+- **Screen Title:** `Plus Jakarta Sans` 18px–20px, Weight 700, Tracking `-0.02em`.
+- **Section Eyebrow / Metadata Label:** `Plus Jakarta Sans` 11px, Weight 700, Uppercase, Tracking `+0.06em`, Color `#475569`.
+- **Body & List Copy:** `Plus Jakarta Sans` 14px, Weight 500, Line-Height 1.45.
+- **Hero Countdown Timer:** `JetBrains Mono` 32px–36px, Weight 700, `tabular-nums`, Tracking `-0.02em`.
+- **Operational Data (Batch IDs, Clock, Ompreng Counts, Timestamps):** `JetBrains Mono` 12px–15px, Weight 600, `tabular-nums`.
+
+#### D. Spacing, Geometry & Ergonomics
+- **Grid:** Strict 4px/8px rhythm. Horizontal screen gutter: `16px` (`px-4`). Vertical section rhythm: `16px`–`20px`.
+- **Border Radii:**
+  - Cards & Containers: `12px` (`rounded-xl`) — crisp, architectural, never overly bubbly.
+  - Primary Buttons & Inputs: `10px` (`rounded-[10px]`).
+  - Toggle Chips & Badges: `8px` (`rounded-lg`) for chips, `6px` (`rounded-md`) for operational tags.
+- **Touch Ergonomics:** Every primary button, menu selection chip, stepper control (`-`/`+`), and tab item must have a minimum tap height of **`48px`** (`min-h-[48px]`), with hero CTAs at **`52px`–`56px`**.
+- **Language:** 100% of visible UI text inside the phone frame must be natural, crisp **Bahasa Indonesia** matching real MBG field operations.
+
+#### E. Screen-by-Screen Layout Anti-Monotony Matrix
+Ensure each screen feels purpose-built with a distinct visual layout:
+- `SCR-01` **Auth:** Deep MBG Navy (`#0B2E59`) upper brand hero (38% height) + clean canvas lower half with 2 bold horizontal actor cards.
+- `SCR-02` **Kitchen Home:** Compact navy status bar + flush 3-column hairline telemetry strip (no gaps, internal vertical dividers) + prominent solid CTA + dense operational batch ledger with left-edge 4px semantic safety bars.
+- `SCR-03` **Production Input:** Sticky segmented mode switcher + structured tactile chip matrix (Manual) OR dark camera viewfinder canvas (AI Live Capture) + pinned live Weakest-Link calculation bar docked right above the seal CTA.
+- `SCR-04` **QR Ticket:** Physical dispatch voucher aesthetic on `#E2E8F0` backdrop—white ticket card with deep navy header band, dashed tear-line divider (`border-dashed`), centered monochrome SVG QR code, and monospace audit grid.
+- `SCR-05` **Ompreng & Maggot:** Tabbed operational console—Tab 1 uses a 3-node horizontal custody stepper per school; Tab 2 uses an asymmetric 2-column environmental impact hero (`#0B2E59` card + crisp `#FFFFFF` card) above a structured pickup dispatch queue.
+- `SCR-06` **School Scanner:** Split dark-to-light screen—top 52% is an edge-to-edge dark viewfinder (`#0B1220`) with crisp blue corner reticles and live scan line; bottom 48% is an anchored sheet listing incoming boxes for 1-tap demo scanning.
+- `SCR-07` **Safety Check (Flagship):** Full-bleed color-coded decision header (`#15803D` / `#B45309` / `#B91C1C`) occupying top 34% of screen with oversized tabular countdown, followed by compact structured evidence ledger & photo proof.
+- `SCR-08` **Zero-Waste Report:** Ultra-clean 15-second single-screen form with 2x2 large visual volume selector tiles (bucket/kg graphics + labels) and pinned submit CTA.
+
+---
+
+### 3. DETAILED SCREEN SPECIFICATIONS & INTERACTIVE LOGIC
+
+#### `SCR-01` — Role Entry & Quick Auth (`/(auth)/login`)
+- **Top Brand Band (`#0B2E59`):** Geometric SajiAman emblem (shield + leaf/container motif), title **"SajiAman"**, subtitle **"Kendali Mutu Pangan & Sirkulasi MBG"**, and a compact monospace pill `"STANDAR SPPG • CLOSED-LOOP"`.
+- **Role Selection Section:** Eyebrow `"PILIH PERAN OPERASIONAL"` + two rich `1px`-bordered interactive role cards (`min-h-[96px]`):
+  1. **Dapur Penyedia (SPPG)** — Icon `ChefHat` in `#EBF3FA` square badge, subtitle *"Catat produksi batch, kunci waktu masak, pantau ompreng & maggot"*, footer metadata in mono: `Chef Hendra • SPPG Semarang Tengah`.
+  2. **Koordinator Sekolah** — Icon `School` in `#EBF3FA` square badge, subtitle *"Pindai QR boks, cek kelayakan konsumsi, lapor sisa maggot"*, footer metadata in mono: `Bu Sari • SDN 01 Pendrikan`.
+- Tapping a card navigates smoothly into that role's workspace.
+
+#### `SCR-02` — Kitchen Dashboard (`/(kitchen)/index`)
+- **Header (`#0B2E59`):** Left: `SPPG Semarang Tengah` + subtle green dot `"Server Waktu Sinkron"`. Right: Live `JetBrains Mono` clock (`HH:MM:SS WIB`) + compact role-switch icon button.
+- **3-Column Operational Telemetry Strip (`#FFFFFF`, `border-b border-[#D8E2EC]`):** Divided by crisp `1px` vertical hairlines:
+  - `Batch Aktif` (count)
+  - `Ompreng Keluar` (total units currently at schools / in transit)
+  - `Jemput Maggot` (count of pending school waste reports; highlights in `#B45309` text if > 0)
+- **Primary Action Button (`mx-4 mt-4`):** Full-width `52px` `#0F4C81` button with `PlusCircle` icon: **`Catat Produksi Batch Baru`** → opens `SCR-03`.
+- **Active Batches Ledger (`mx-4 mt-4`):** Section eyebrow `"BATCH PRODUKSI HARI INI"` with filter chips (`Semua`, `Aman`, `Kritis/Merah`).
+  - Each batch row is a `#FFFFFF` hairline-bordered card with a **4px solid left accent bar** colored by live safety status (`#15803D`, `#B45309`, or `#B91C1C`).
+  - Top row: School Name (bold 15px) + Monospace Batch ID (`MBG-2411-A01`).
+  - Middle row: Compact menu summary + **Weakest-Link tag** (e.g., `Terentan: Sayur Lodeh • 3,5j`) + Ompreng count pill (`150 Ompreng`).
+  - Bottom row: Live ticking `JetBrains Mono` countdown (`02:41:18 tersisa` or `KEDALUWARSA`) + status badge (`AMAN`, `SEGERA`, `DILARANG`).
+  - Tapping any batch opens its QR Dispatch Ticket (`SCR-04`).
+- **Fixed Bottom Tab Bar (`#FFFFFF`, `border-t border-[#D8E2EC]`, height `64px`):**
+  1. `Produksi` (`ClipboardList`)
+  2. `Ompreng` (`PackageCheck`)
+  3. `Maggot` (`Recycle` + numeric badge if pickups are waiting)
+
+#### `SCR-03` — Dual-Mode Production Input (`/(kitchen)/create-batch`)
+- **Top Navigation Bar:** Back arrow + title `"Catat Produksi Batch"` + live locked-clock preview pill.
+- **Segmented Control (`#EDF2F7` track, `#FFFFFF` active pill):**
+  - Tab 1: **`Mode Cepat Manual`** (Chef Preset)
+  - Tab 2: **`Mode Foto Sampel AI`** (Live Capture Only)
+- **Mode 1 — Chef Preset Matrix:**
+  - 4 cleanly separated categories with `min-h-[48px]` tactile selectable chips (2-column flex wrap). Each chip shows item name + compact holding-time tag (`3,5j`, `4,0j`, `4,5j`, `5,0j`, `6,0j`):
+    - **Karbohidrat:** Nasi Putih (`4,5j`), Nasi Uduk Santan (`3,5j`), Kentang Rebus (`4,5j`).
+    - **Protein:** Ayam Goreng Kering (`5,0j`), Telur Balado (`4,5j`), Gulai Ayam Santan (`3,5j`), Ikan Kuah Kuning (`3,5j`), Tempe Orek Kering (`5,0j`).
+    - **Sayur:** Tumis Buncis Kering (`4,5j`), Capcay Kuah (`4,0j`), Sayur Lodeh Santan (`3,5j`), Sop Wortel Bakso (`3,5j`).
+    - **Buah:** Pisang Ambon (`6,0j`), Jeruk Medan (`6,0j`), Potongan Melon (`3,5j`).
+  - Selected chips turn `#EBF3FA` with `1.5px solid #0F4C81` border and checkmark. Items with `3,5j` show a subtle amber dot indicating high perishability.
+- **Mode 2 — AI Live Sample Capture:**
+  - Dark `4:3` viewfinder container displaying a realistic simulated stainless-steel MBG tray live preview (with real camera toggle attempt via `cameraAdapter` and seamless visual fallback).
+  - Top-left security lock badge inside viewfinder: `Lock` icon + **`KAMERA LANGSUNG • UNGGAH GALERI NONAKTIF`** (explicitly no file upload button).
+  - Centered tactile shutter button: **`Ambil Foto Sampel Langsung`**.
+  - On tap: 1.2s crisp scanning sweep animation → displays captured frame with burned-in monospace timestamp watermark (`SPPG SMG • 05:30:12 WIB • VERIFIED`) + **4-Component Nutrition Verification Strip** (`Karbohidrat ✓`, `Protein ✓`, `Sayur ✓`, `Buah ✓`) + automatically selects matching menu items so the Weakest-Link Engine calculates accurately.
+- **Logistics & Container Block (`#FFFFFF` hairline card):**
+  - **Sekolah Tujuan:** Clean dropdown selector (`SDN 01 Pendrikan`, `SMPN 03 Semarang`, `SDN 04 Miroto`, `MI Al-Hikmah`).
+  - **Jumlah Ompreng Stainless:** Tactile `-` / `+` stepper buttons (`48px × 48px`), large monospace count (`150`), plus quick-add pills (`+25`, `+50`, `+100`).
+- **Sticky Bottom Action Dock (`#FFFFFF`, `border-t border-[#D8E2EC]`):**
+  - **Live Weakest-Link Rule Strip** right above the CTA button:
+    - Shows calculated holding time in bold mono (e.g., **`Batas Aman: 3,5 Jam`**) and exact trigger explanation (e.g., *"Dipicu: Sayur Lodeh Santan (Berkuah/Santan)"* or *"Menu Kering Penuh — Standar 4,5 Jam"*).
+  - Primary `52px` CTA (`#0F4C81`): `ShieldCheck` icon + **`Selesai Masak & Segel Boks`** (disabled until at least 1 item is selected).
+  - Clicking locks `cookedAt` to current simulated server time, calculates `expiresAt`, saves to shared repository, shows confirmation toast, and navigates directly to `SCR-04`.
+
+#### `SCR-04` — Batch QR Dispatch Ticket (`/(kitchen)/batch/[id]`)
+- **Canvas Background:** `#E2E8F0` to make the physical voucher stand out sharply.
+- **Dispatch Ticket Card (`#FFFFFF`, `border border-[#94A3B8]`, `rounded-xl overflow-hidden`):**
+  - **Header Strip (`#0B2E59`):** Left: `"LABEL SEGEL BOKS MBG"`. Right: Monospace Batch ID (`MBG-2411-A04`).
+  - **Target School & Ompreng Bar:** School name (18px bold) + high-contrast badge **`150 OMPRENG STAINLESS`**.
+  - **Centered QR Code Zone:** Crisp programmatic **SVG QR Code** (rendered deterministically from `batchId`) framed in a clean square with instruction `"Pindai di sekolah sebelum dibagikan ke siswa"`.
+  - **Dashed Perforation Divider (`border-t-2 border-dashed border-[#CBD5E1]`)** with subtle semicircular side notches.
+  - **Anti-Tampering Audit Grid (2×2 monospace cells):**
+    1. `WAKTU MASAK TERKUNCI`: `05:30 WIB` (with `Lock` icon)
+    2. `BATAS AMAN KONSUMSI`: `09:00 WIB`
+    3. `ATURAN TERENTAN`: `3,5 Jam (Santan)`
+    4. `MODE INPUT`: `Foto AI Terverifikasi` / `Manual Chef`
+  - Optional thumbnail of the live-captured tray photo (if AI mode was used) + compact menu bullet list.
+- **Action Footer:** Two buttons side-by-side: **`Cetak / Simpan QR`** (triggers crisp toast `"Label QR siap cetak thermal 80mm"`) and **`Kembali ke Dasbor`**.
+
+#### `SCR-05A & 05B` — Reusable Ompreng Tracker & Zero-Waste Maggot Dashboard
+- **`SCR-05A` — Tab `Ompreng` (`/(kitchen)/ompreng`):**
+  - **Inventory Summary Strip (4 compact hairline tiles):** `Total Inventaris (600)`, `Di Dapur`, `Di Sekolah`, `Dalam Kirim`.
+  - **Per-Batch Custody Cards:** Each card shows School Name, Batch ID, Ompreng Count (`150 unit`), and a crisp **3-step horizontal status pipeline**:
+    1. `Dikirim Dapur` (`●`) ── 2. `Diterima Sekolah` (`●`) ── 3. `Kembali & Steril` (`○`)
+  - When a school has confirmed receipt (`Diterima Sekolah`), show a prominent `44px` action button: **`Konfirmasi Wadah Kembali Lengkap`**. Tapping it closes the loop, marks status `Kembali & Steril`, returns count to Kitchen inventory, and increments *Kemasan Plastik Dicegah* globally.
+- **`SCR-05B` — Tab `Maggot` (`/(kitchen)/maggot`):**
+  - **Asymmetric Environmental Impact Bento (2 cards side-by-side):**
+    - Left (`#0B2E59` dark navy card): `Leaf` icon, large `JetBrains Mono` figure (e.g., `1.850`), label `"Kemasan Plastik Sekali Pakai Dicegah"`.
+    - Right (`#FFFFFF` hairline card with `#15803D` accent): `Recycle` icon, large `JetBrains Mono` figure (e.g., `42,5 kg`), label `"Limbah Organik ke Pakan Maggot BSF"`.
+  - **Antrean Jemput Mitra Maggot (Live Queue from School Reports):**
+    - Displays all submitted Zero-Waste reports with School Name, Batch ID, Waste Category badge (`Sisa Pasca-Makan` / `Surplus Porsi` / `Kedaluwarsa Merah`), estimated volume (`1 Ember • ~3,5 kg`), timestamp, and status pill (`Siap Dijemput` in amber vs `Dijemput Mitra BSF` in green).
+    - Pending items display a clear CTA: **`Tugaskan Mitra BSF (Maggot Jaya)`** → updates status live and shows dispatch confirmation toast.
+
+#### `SCR-06` — School Coordinator Home & 1-Scan QR Scanner (`/(school)/index`)
+- **Top Bar (`#0B2E59`):** Left: `SDN 01 Pendrikan` + `"Koordinator: Bu Sari"`. Right: Live `WIB` clock + Role Switch button.
+- **Hero Viewfinder Zone (Top ~46% of screen, `#0B1220` dark precision frame):**
+  - Clean camera scanner viewport with 4 crisp `#38BDF8` corner L-brackets, subtle horizontal scanning reticle line, and label `"Arahkan kamera ke Kode QR pada boks utama MBG"`.
+  - Optional manual Batch ID input button (`"Input Kode Manual"`).
+- **Bottom Sheet Tray (`#F4F7FA`, rounded-t-2xl):**
+  - Header: **`SIMULASI PINDAI QR — BOKS MASUK HARI INI`** (with helper subtext *"Ketuk salah satu batch untuk simulasi hasil pindai instan"*).
+  - Lists all live batches created by Kitchen + **3 pre-seeded demonstration batches** carefully timed against the default clock so the user can immediately inspect all 3 safety states:
+    1. **Batch HIJAU (`MBG-2411-G01`)** — Menu kering (`4,5j`), ~2 jam 15 menit tersisa.
+    2. **Batch KUNING (`MBG-2411-Y02`)** — Capcay kuah (`4,0j`), ~28 menit tersisa (`< 45 menit`).
+    3. **Batch MERAH (`MBG-2411-R03`)** — Sayur Lodeh Santan (`3,5j`), sudah lewat 20 menit (`KEDALUWARSA`).
+  - Tapping any item plays a snappy 350ms scan lock feedback and opens `SCR-07`.
+- **School Bottom Tab Bar:** `Pindai QR` (`QrCode`) and `Riwayat Boks` (`History` — shows accepted batches & submitted Maggot reports).
+
+#### `SCR-07 (A / B / C)` — 1-Scan Safety Check Result Card (`/(school)/scan/[id]`)
+**THE FLAGSHIP SCREEN** — Must evaluate live against `expiresAt - simulatedNow` every second so fast-forwarding the QA Clock transitions a batch seamlessly from `HIJAU` → `KUNING` → `MERAH`:
+- **Full-Bleed Top Traffic-Light Decision Header:**
+  - **STATE A — HIJAU (`remaining > 45 min`, bg `#15803D`, text `#FFFFFF`):**
+    - `ShieldCheck` icon + **`AMAN DIKONSUMSI`** (24px ExtraBold)
+    - Oversized `JetBrains Mono` countdown: **`02:14:52`** + caption `"SISA WAKTU AMAN KONSUMSI"`
+    - Clear instruction: *"Layak dibagikan kepada siswa sesuai jadwal makan."*
+  - **STATE B — KUNING (`0 < remaining <= 45 min`, bg `#B45309`, text `#FFFFFF`):**
+    - `AlertTriangle` icon + **`SEGERA KONSUMSI`** (24px ExtraBold)
+    - Oversized `JetBrains Mono` countdown: **`00:27:45`** + pill `"KURANG DARI 45 MENIT"`
+    - Urgent instruction: *"Segera bagikan seluruh porsi kepada siswa sekarang juga tanpa menunda."*
+  - **STATE C — MERAH (`remaining <= 0`, bg `#B91C1C`, text `#FFFFFF`):**
+    - `OctagonAlert` icon + **`DILARANG DIBAGIKAN`** (24px ExtraBold)
+    - Monospace status: **`KEDALUWARSA • LEWAT 00:20:14`**
+    - Hard-lock notice: *"Batas waktu aman habis. Sistem mengunci distribusi demi keselamatan siswa. Alihkan segera ke jalur pakan maggot."*
+- **Primary Decision Actions (Directly below header):**
+  - **If HIJAU or KUNING:**
+    - If ompreng not yet confirmed: Full-width `52px` `#0F4C81` CTA: **`Konfirmasi Terima [150] Ompreng Stainless`** (1-tap confirmation → changes into green confirmed badge `"✓ 150 Ompreng Dikonfirmasi Masuk"` and updates Kitchen's Ompreng Tracker).
+    - Secondary outline button (`48px`): **`Lapor Sisa Pasca-Makan (Jalur Maggot)`** → opens `SCR-08`.
+  - **If MERAH (Hard Lock):**
+    - Show a visibly **LOCKED / DISABLED** bar (`#FEE2E2` surface, `#B91C1C` text, `Lock` icon): `"Distribusi ke Siswa Dikunci Sistem"`.
+    - Mandatory full-width `52px` `#B91C1C` primary CTA: **`Alihkan ke Jalur Pakan Maggot (BSF)`** → opens `SCR-08` pre-selected with `Kedaluwarsa (Status Merah)`.
+- **Batch Audit & Visual Evidence Card (`#FFFFFF`, `border border-[#D8E2EC]`):**
+  - Live Kitchen Sample Photo thumbnail with original burned-in timestamp badge (or `"Dicatat via Mode Cepat Chef"` metadata badge).
+  - Compact 2-column time audit (`Selesai Masak` vs `Batas Aman`) in `JetBrains Mono`.
+  - Menu list displaying all components, with the **Weakest-Link component** highlighted with a crisp amber/navy micro-badge (`Penentu Batas Waktu`).
+
+#### `SCR-08` — Quick Zero-Waste Maggot Report (`/(school)/report-waste/[id]`)
+- **Goal:** Completable in under 15 seconds by a busy teacher with zero weighing scale required.
+- **Batch Reference Strip:** Compact summary showing Batch ID, School Name, and current safety status pill.
+- **Section 1 — Kategori Laporan (3 Tactile Pills):**
+  - `Sisa Pasca-Makan` | `Surplus Porsi Utuh` | `Kedaluwarsa (Status Merah)` (auto-selected if arriving from a Red batch).
+- **Section 2 — Estimasi Volume Praktis (2×2 Tactile Tile Grid, `min-h-[84px]` each):**
+  - `Ringan` — `½ Ember • ~1,5 kg`
+  - `Sedang` — `1 Ember • ~3,5 kg`
+  - `Banyak` — `2 Ember • ~7,5 kg`
+  - `Surplus Penuh` — `1 Boks • ~15 kg`
+  - Selected tile highlights with `#EBF3FA` fill and `2px solid #0F4C81` border.
+- **Section 3 — Catatan Singkat (Opsional):** Single-line input (e.g., *"Titip di pos satpam dekat gerbang utama"*).
+- **Pinned Submit CTA (`52px`, `#0F4C81`):** **`Kirim & Panggil Penjemputan Maggot`**.
+- **On Submit:**
+  - Displays a clean confirmation receipt card (`"Laporan Terkirim ke SPPG Semarang Tengah — Status: Siap Dijemput Mitra Maggot BSF"`).
+  - Immediately inserts the pickup ticket into Kitchen's `SCR-05B` Maggot Queue and updates total organic waste diverted (kg).
+
+---
+
+### 4. QUALITY & VERIFICATION CHECKLIST
+- Every button, tab, stepper, and form must be 100% functional with zero dead links and zero browser `alert()` popups (use clean top/bottom toast banners).
+- All timers must tick live every second using `setInterval` synchronized to the QA simulated clock offset.
+- Switching between Kitchen and School must reflect state changes instantaneously (e.g., sealing a new batch in Kitchen immediately appears in School's QR scan list; confirming ompreng or reporting Maggot waste in School immediately updates Kitchen's telemetry counters and tabs).
+- Keep all styling strictly faithful to `design.md` (Swiss-Utilitarian MBG Blue, hairline borders, `Plus Jakarta Sans` + `JetBrains Mono` tabular numbers, zero AI-slop gradients or heavy shadows).

@@ -1,0 +1,6 @@
+{
+  "name": "SajiAman",
+  "description": "Kendali Mutu Pangan, Sirkulasi Ompreng Stainless & Jalur Biokonversi Maggot BSF untuk Program Makan Bergizi Gratis (MBG).",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
