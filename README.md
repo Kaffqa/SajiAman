@@ -148,7 +148,7 @@ npm run typecheck
 npm test
 ```
 
-Kompilasi APK Android siap uji lapangan melalui Expo EAS (`eas.json` profil `preview` otomatis mengosongkan API Key AI client):
+Kompilasi APK Android siap uji lapangan melalui Expo EAS (mode rilis otomatis hanya memakai Edge Function server tanpa menyertakan API Key AI di klien):
 ```bash
 eas build -p android --profile preview
 ```
