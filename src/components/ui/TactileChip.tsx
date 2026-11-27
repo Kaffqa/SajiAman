@@ -1,5 +1,7 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Pressable, Text, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+import { hapticsAdapter } from '../../adapters/hapticsAdapter';
 
 interface TactileChipProps {
   label: string;
@@ -16,39 +18,61 @@ export const TactileChip: React.FC<TactileChipProps> = ({
   isHighRisk = false,
   onPress,
 }) => {
+  const handlePress = () => {
+    hapticsAdapter.lightImpact();
+    onPress();
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onPress}
-      aria-pressed={selected}
-      className={`flex flex-row items-center justify-between gap-2 min-h-[48px] px-3 py-2 rounded-[8px] text-left transition-transform duration-150 active:scale-[0.98] cursor-pointer ${
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      className={`flex-row items-start gap-2.5 min-h-[60px] px-3 py-2.5 rounded-[10px] active:opacity-85 ${
         selected
-          ? 'bg-[#EBF3FA] border-[1.5px] border-[#0F4C81] text-[#0B2E59]'
-          : 'bg-white border border-[#D8E2EC] text-[#0F172A] active:bg-[#F4F7FA]'
+          ? 'bg-[#EBF3FA] border-[1.5px] border-[#0F4C81]'
+          : 'bg-white border border-[#D8E2EC]'
       }`}
     >
-      <div className="flex flex-row items-center gap-2 min-w-0 flex-1">
-        <span
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border ${
-            selected
-              ? 'bg-[#0F4C81] border-[#0F4C81] text-white'
-              : 'bg-white border-[#94A3B8]'
+      <View
+        className={`h-4 w-4 mt-0.5 rounded-[4px] items-center justify-center border shrink-0 ${
+          selected
+            ? 'bg-[#0F4C81] border-[#0F4C81]'
+            : 'bg-white border-[#94A3B8]'
+        }`}
+      >
+        {selected ? <Check size={12} color="#FFFFFF" strokeWidth={2.5} /> : null}
+      </View>
+
+      <View className="flex-1 min-w-0 justify-between gap-1">
+        <Text
+          numberOfLines={2}
+          className={`font-sans text-[12.5px] leading-[16px] font-semibold ${
+            selected ? 'text-[#0B2E59]' : 'text-[#0F172A]'
           }`}
         >
-          {selected ? <Check className="w-3 h-3" strokeWidth={2.5} /> : null}
-        </span>
-        <span className="text-[13px] font-semibold leading-[1.25] truncate">{label}</span>
-      </div>
+          {label}
+        </Text>
 
-      <span className="flex flex-row items-center gap-1 shrink-0 font-mono text-[11px] font-semibold tabular-nums text-[#475569]">
-        {isHighRisk ? (
-          <span
-            aria-label="Risiko cepat basi"
-            className="inline-block h-2 w-2 rounded-full bg-[#B45309]"
-          />
-        ) : null}
-        <span>{badgeText}</span>
-      </span>
-    </button>
+        <View className="flex-row items-center gap-1.5 flex-wrap">
+          {isHighRisk ? (
+            <View className="h-2 w-2 rounded-full bg-[#B45309] shrink-0" />
+          ) : null}
+          <Text
+            style={{ fontFamily: 'JetBrainsMono_600SemiBold', fontVariant: ['tabular-nums'] }}
+            className={`text-[10.5px] ${
+              isHighRisk ? 'text-[#B45309]' : 'text-[#475569]'
+            }`}
+          >
+            {badgeText}
+          </Text>
+          {isHighRisk ? (
+            <Text className="font-sans text-[9.5px] font-bold text-[#B45309]">
+              Cepat Basi
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
   );
 };

@@ -1,5 +1,7 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { Pressable, Text, View } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
+import { hapticsAdapter } from '../../adapters/hapticsAdapter';
 
 interface StepHeaderProps {
   title: string;
@@ -18,47 +20,64 @@ export const StepHeader: React.FC<StepHeaderProps> = ({
 }) => {
   const isNavy = variant === 'navy';
 
+  const handleBack = () => {
+    if (onBack) {
+      hapticsAdapter.selection();
+      onBack();
+    }
+  };
+
   return (
-    <header
-      className={`flex flex-row items-center justify-between gap-2 px-3 py-2.5 min-h-[56px] shrink-0 border-b ${
+    <View
+      className={`flex-row items-center justify-between gap-2 px-3 py-2.5 min-h-[56px] border-b ${
         isNavy
-          ? 'bg-[#0B2E59] border-[#1E3A5F] text-white'
-          : 'bg-white border-[#D8E2EC] text-[#0F172A]'
+          ? 'bg-[#0B2E59] border-[#1E3A5F]'
+          : 'bg-white border-[#D8E2EC]'
       }`}
     >
-      <div className="flex flex-row items-center gap-2 min-w-0 flex-1">
+      <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
         {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Kembali"
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] active:scale-[0.96] cursor-pointer ${
+          <Pressable
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+            className={`h-11 w-11 shrink-0 items-center justify-center rounded-[10px] active:opacity-75 ${
               isNavy
-                ? 'bg-white/10 text-white active:bg-white/20'
-                : 'bg-[#F4F7FA] text-[#0F172A] border border-[#D8E2EC] active:bg-[#EDF2F7]'
+                ? 'bg-white/10'
+                : 'bg-[#F4F7FA] border border-[#D8E2EC]'
             }`}
           >
-            <ArrowLeft className="w-5 h-5" strokeWidth={2} />
-          </button>
+            <ArrowLeft
+              size={20}
+              color={isNavy ? '#FFFFFF' : '#0F172A'}
+              strokeWidth={2}
+            />
+          </Pressable>
         ) : null}
 
-        <div className="flex flex-col min-w-0">
+        <View className="flex-col flex-1 min-w-0">
           {eyebrow ? (
-            <span
-              className={`text-[10px] font-bold uppercase tracking-[0.07em] truncate ${
+            <Text
+              numberOfLines={1}
+              className={`font-sans text-[10px] font-bold uppercase tracking-[0.08em] ${
                 isNavy ? 'text-[#93C5FD]' : 'text-[#475569]'
               }`}
             >
               {eyebrow}
-            </span>
+            </Text>
           ) : null}
-          <h1 className="text-[16px] font-bold tracking-[-0.02em] truncate leading-[1.2]">
+          <Text
+            numberOfLines={1}
+            className={`font-sans text-[16px] font-bold tracking-[-0.02em] ${
+              isNavy ? 'text-white' : 'text-[#0F172A]'
+            }`}
+          >
             {title}
-          </h1>
-        </div>
-      </div>
+          </Text>
+        </View>
+      </View>
 
-      {rightSlot ? <div className="flex shrink-0 items-center">{rightSlot}</div> : null}
-    </header>
+      {rightSlot ? <View className="shrink-0 items-center">{rightSlot}</View> : null}
+    </View>
   );
 };
