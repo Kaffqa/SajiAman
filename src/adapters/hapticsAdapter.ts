@@ -1,36 +1,56 @@
 /**
- * Haptics Adapter (Strict Native Boundary)
- * // TODO(expo-migration): Swap with `expo-haptics` (impactAsync / notificationAsync).
+ * SajiAman Haptics Adapter (Expo Haptics)
+ * Maps physical tactile feedback across the Swiss-Utilitarian Civic Instrument:
+ * - Light impact on tactile chips, steppers, and buttons
+ * - Notification Success on sealing a batch or confirming ompreng
+ * - Notification Warning on yellow scan (<45m remaining)
+ * - Notification Error on red expired hard-lock scan
  */
+
+import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
+
+function safeHaptic(fn: () => Promise<void>): void {
+  if (Platform.OS === 'web') return;
+  try {
+    Promise.resolve(fn()).catch(() => {
+      // Graceful fallback
+    });
+  } catch {
+    // Graceful fallback
+  }
+}
 
 export const hapticsAdapter = {
   selection(): void {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try {
-        navigator.vibrate(10);
-      } catch {
-        // No-op on unsupported environments
-      }
-    }
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+  },
+
+  lightImpact(): void {
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+  },
+
+  mediumImpact(): void {
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
+  },
+
+  heavyImpact(): void {
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
+  },
+
+  notification(): void {
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
   },
 
   success(): void {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try {
-        navigator.vibrate([15, 30, 20]);
-      } catch {
-        // No-op
-      }
-    }
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
   },
 
   warning(): void {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try {
-        navigator.vibrate([30, 40, 30]);
-      } catch {
-        // No-op
-      }
-    }
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+  },
+
+  error(): void {
+    safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
   },
 };

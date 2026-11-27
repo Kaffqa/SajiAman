@@ -1,38 +1,57 @@
 /**
- * Local Storage Adapter (Strict Native Boundary)
- * // TODO(expo-migration): Swap with `react-native-mmkv` for offline-first cache
- * // and `@supabase/supabase-js` for remote persistence.
+ * SajiAman Local Storage Adapter (Native Expo AsyncStorage)
+ * Implements persistent key-value store using @react-native-async-storage/async-storage.
+ * Fully compatible with Expo Go and production builds.
+ *
+ * // TODO(future-optimization): Swap @react-native-async-storage/async-storage with
+ * // react-native-mmkv when moving to a custom Dev Client for 10x faster synchronous storage access.
  */
 
-const NAMESPACE = 'sajiaman_mbg_v1_';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const NAMESPACE = '@sajiaman_mbg_v1_';
 
 export const storageAdapter = {
-  getItem<T>(key: string): T | null {
+  async getItem<T>(key: string): Promise<T | null> {
+    if (typeof window === 'undefined') return null;
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return null;
-      const raw = window.localStorage.getItem(`${NAMESPACE}${key}`);
+      const raw = await AsyncStorage.getItem(`${NAMESPACE}${key}`);
       if (!raw) return null;
       return JSON.parse(raw) as T;
-    } catch {
+    } catch (error) {
+      console.warn(`[storageAdapter] Error reading key "${key}":`, error);
       return null;
     }
   },
 
-  setItem<T>(key: string, value: T): void {
+  async setItem<T>(key: string, value: T): Promise<void> {
+    if (typeof window === 'undefined') return;
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      window.localStorage.setItem(`${NAMESPACE}${key}`, JSON.stringify(value));
-    } catch {
-      // Ignore quota errors in restricted iframe sandboxes
+      await AsyncStorage.setItem(`${NAMESPACE}${key}`, JSON.stringify(value));
+    } catch (error) {
+      console.warn(`[storageAdapter] Error writing key "${key}":`, error);
     }
   },
 
-  removeItem(key: string): void {
+  async removeItem(key: string): Promise<void> {
+    if (typeof window === 'undefined') return;
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      window.localStorage.removeItem(`${NAMESPACE}${key}`);
-    } catch {
-      // Ignore storage errors
+      await AsyncStorage.removeItem(`${NAMESPACE}${key}`);
+    } catch (error) {
+      console.warn(`[storageAdapter] Error removing key "${key}":`, error);
+    }
+  },
+
+  async clear(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const sajiamanKeys = allKeys.filter((k) => k.startsWith(NAMESPACE));
+      if (sajiamanKeys.length > 0) {
+        await AsyncStorage.multiRemove(sajiamanKeys);
+      }
+    } catch (error) {
+      console.warn('[storageAdapter] Error clearing keys:', error);
     }
   },
 };
