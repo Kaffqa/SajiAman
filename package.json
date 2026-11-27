@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "~19.3.0",
     "babel-preset-expo": "~58.0.0",
     "tsx": "^4.19.2",

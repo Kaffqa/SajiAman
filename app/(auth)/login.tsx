@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,7 +25,6 @@ import {
   Mail,
   QrCode,
   Recycle,
-  ShieldCheck,
 } from 'lucide-react-native';
 import { useSajiAman } from '../../src/context/SajiAmanContext';
 import { KITCHEN_PROFILE, SCHOOLS } from '../../src/data/mockRepository';
@@ -138,9 +138,11 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row items-center gap-3.5">
-          <View className="h-12 w-12 items-center justify-center rounded-[14px] bg-[#0F4C81] border border-white/25 shrink-0 shadow-sm">
-            <ShieldCheck size={26} color="#FFFFFF" strokeWidth={2} />
-          </View>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 48, height: 48, borderRadius: 12 }}
+            resizeMode="contain"
+          />
           <View className="flex-1 min-w-0">
             <Text className="font-sans font-extrabold text-[23px] text-white tracking-[-0.025em] leading-[27px]">
               SajiAman
