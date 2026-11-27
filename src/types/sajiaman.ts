@@ -4,11 +4,19 @@
  * kitchens, schools, menu_items, batches, batch_items, ompreng_logs, maggot_reports
  */
 
-export type UserRole = 'kitchen' | 'school';
+export type UserRole = 'kitchen' | 'school' | 'admin';
 
 export type SafetyStatus = 'GREEN' | 'YELLOW' | 'RED';
 
-export type MenuCategory = 'karbohidrat' | 'protein' | 'sayur' | 'buah';
+export type BatchStatus = 'active' | 'voided' | 'rejected_spoiled';
+
+export type MenuCategory =
+  | 'karbohidrat'
+  | 'protein'
+  | 'sayur'
+  | 'buah'
+  | 'susu_minuman'
+  | 'sambal_pelengkap';
 
 export type ProductionInputMode = 'manual' | 'ai_camera';
 
@@ -17,6 +25,43 @@ export type OmprengCustodyStatus = 'dispatched' | 'received_school' | 'returned_
 export type WasteCategory = 'post_meal' | 'surplus_intact' | 'expired_red';
 
 export type MaggotPickupStatus = 'pending_pickup' | 'dispatched_bsf';
+
+export type RealtimeConnectionState = 'SUBSCRIBED' | 'CONNECTING' | 'OFFLINE';
+
+export type NotificationType =
+  | 'new_batch'
+  | 'early_spoilage'
+  | 'ompreng_discrepancy'
+  | 'ompreng_ready'
+  | 'batch_voided';
+
+export interface AppNotification {
+  id: string;
+  recipientRole?: UserRole;
+  kitchenId?: string;
+  schoolId?: string;
+  batchId?: string;
+  batchCode?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  isRead: boolean;
+  createdAt: number;
+}
+
+export interface ActiveUserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  phoneWa: string;
+  role: UserRole;
+  kitchenId?: string;
+  kitchenName?: string;
+  kitchenCode?: string;
+  schoolId?: string;
+  schoolName?: string;
+  isActive?: boolean;
+}
 
 export interface KitchenProfile {
   id: string;
@@ -30,8 +75,11 @@ export interface KitchenProfile {
 
 export interface SchoolProfile {
   id: string;
+  npsn?: string;
   name: string;
+  address?: string;
   picName: string;
+  phoneWa?: string;
   email: string;
   defaultPortions: number;
 }
@@ -43,6 +91,9 @@ export interface MenuItem {
   holdingHours: number; // e.g., 3.5, 4.0, 4.5, 5.0, 6.0
   riskLabel: string; // e.g., "Berkuah/Santan", "Menu Kering", "Buah Potong"
   isHighRisk: boolean; // true for <= 3.5h
+  isActive?: boolean;
+  kitchenId?: string | null;
+  isSystemDefault?: boolean;
 }
 
 export interface WeakestLinkResult {
@@ -66,10 +117,15 @@ export interface SafetyEvaluation {
 
 export interface BatchRecord {
   id: string; // e.g., MBG-2411-G01
+  dbId?: string; // PostgreSQL UUID primary key
   kitchenId: string;
+  kitchenCode?: string;
   kitchenName: string;
   schoolId: string;
   schoolName: string;
+  createdBy?: string;
+  creatorName?: string;
+  qrToken?: string;
   boxNumber: string; // e.g., Boks #04
   items: MenuItem[];
   weakestLinkItemId: string;
@@ -88,8 +144,21 @@ export interface BatchRecord {
   omprengConfirmedAt?: number;
   omprengReturnedAt?: number;
   inputMode: ProductionInputMode;
+  batchStatus?: BatchStatus; // 'active' | 'voided' | 'rejected_spoiled'
+  rejectionReason?: string;
+  rejectionPhotoPath?: string;
+  rejectedAt?: number;
+  voidReason?: string;
+  voidedAt?: number;
+  omprengReadyForPickup?: boolean;
+  omprengReadyForPickupAt?: number;
   samplePhotoUrl?: string;
+  samplePhotoStoragePath?: string;
   samplePhotoTimestamp?: string;
+  aiOverridden?: boolean;
+  aiDetectedWeakestMinutes?: number;
+  verificationMethod?: 'qr_scan' | 'manual_code';
+  manualVerificationReason?: string;
   aiVerifiedNutrition?: {
     karbohidrat: boolean;
     protein: boolean;
@@ -127,9 +196,72 @@ export interface MaggotReport {
 export interface SajiAmanStateSnapshot {
   batches: BatchRecord[];
   maggotReports: MaggotReport[];
+  notifications: AppNotification[];
   plasticsSavedBaseline: number;
   organicKgBaseline: number;
   baseReferenceTimeMs: number;
+}
+
+export interface AdminKitchenSummary {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  total_ompreng_inventory: number;
+  is_active?: boolean;
+  school_count: number;
+  staff_count: number;
+  active_batch_count: number;
+  created_at?: string;
+}
+
+export interface AdminSchoolSummary {
+  id: string;
+  npsn?: string;
+  name: string;
+  address?: string;
+  pic_name?: string;
+  phone_wa?: string;
+  default_portions: number;
+  assigned_kitchen_id: string;
+  is_active?: boolean;
+  assigned_kitchen_code?: string;
+  assigned_kitchen_name?: string;
+  created_at?: string;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  email_confirmed: boolean;
+  role?: UserRole | null;
+  full_name?: string | null;
+  phone_wa?: string | null;
+  kitchen_id?: string | null;
+  kitchen_code?: string | null;
+  kitchen_name?: string | null;
+  school_id?: string | null;
+  school_name?: string | null;
+  is_active?: boolean;
+  is_orphan: boolean;
+  created_at?: string;
+}
+
+export interface AdminDashboardSnapshot {
+  kitchens: AdminKitchenSummary[];
+  schools: AdminSchoolSummary[];
+  users: AdminUserSummary[];
+  metrics: {
+    total_kitchens: number;
+    total_schools: number;
+    total_users: number;
+    orphan_users: number;
+    total_batches: number;
+    active_batches: number;
+    rejected_batches: number;
+    voided_batches: number;
+    total_maggot_kg: number;
+  };
 }
 
 export type AppRoute =

@@ -4,7 +4,7 @@
  * Directly portable to React Native / Expo & Edge Functions.
  */
 
-import type { MenuItem, SafetyEvaluation, WeakestLinkResult } from '../types/sajiaman';
+import type { BatchStatus, MenuItem, SafetyEvaluation, WeakestLinkResult } from '../types/sajiaman';
 
 export const WARNING_THRESHOLD_MINUTES = 45;
 export const WARNING_THRESHOLD_MS = WARNING_THRESHOLD_MINUTES * 60 * 1000;
@@ -109,6 +109,48 @@ export function evaluateSafetyStatus(expiresAtMs: number, nowMs: number): Safety
 }
 
 /**
+ * Evaluates full batch safety verdict taking into account batch_status overrides
+ * ('voided' and 'rejected_spoiled') before time-based holding window checks.
+ */
+export function evaluateBatchSafety(
+  batch: {
+    expiresAt: number;
+    batchStatus?: BatchStatus;
+    rejectionReason?: string;
+    rejectedAt?: number;
+    voidReason?: string;
+    voidedAt?: number;
+  },
+  nowMs: number
+): SafetyEvaluation {
+  if (batch.batchStatus === 'voided') {
+    return {
+      status: 'RED',
+      remainingMs: 0,
+      elapsedPastExpiryMs: Math.max(0, nowMs - (batch.voidedAt ?? nowMs)),
+      isExpired: true,
+      verdictTitle: 'DIBATALKAN DAPUR',
+      verdictBadge: 'VOID',
+      instruction: `Pengiriman boks dibatalkan oleh Dapur SPPG${batch.voidReason ? `: ${batch.voidReason}` : '.'} Dilarang menerima atau membagikan ke siswa.`,
+    };
+  }
+
+  if (batch.batchStatus === 'rejected_spoiled') {
+    return {
+      status: 'RED',
+      remainingMs: 0,
+      elapsedPastExpiryMs: Math.max(0, nowMs - (batch.rejectedAt ?? nowMs)),
+      isExpired: true,
+      verdictTitle: 'DITOLAK KOORDINATOR',
+      verdictBadge: 'DITOLAK',
+      instruction: `Boks ditolak: ${batch.rejectionReason || 'Kondisi makanan tidak layak'}. Distribusi ke siswa dikunci sistem demi keselamatan. Segera alihkan ke jalur pakan maggot.`,
+    };
+  }
+
+  return evaluateSafetyStatus(batch.expiresAt, nowMs);
+}
+
+/**
  * Formats a non-negative duration in milliseconds into HH:MM:SS tabular format.
  */
 export function formatCountdown(durationMs: number): string {
@@ -151,28 +193,49 @@ export function generateBatchId(sequenceNumber: number): string {
 }
 
 /**
- * Computes ompreng inventory breakdown across kitchen, in transit, and at schools.
+ * Computes zero-sum ompreng inventory breakdown across kitchen, in transit,
+ * at schools (including ready_pickup), returned sterilized, and missing/discrepancy units.
  */
 export function calculateOmprengTelemetry(
   totalInventory: number,
-  batches: Array<{ omprengCount: number; omprengStatus: string }>
+  batches: Array<{
+    omprengCount: number;
+    omprengReceivedCount?: number;
+    omprengStatus: string;
+    batchStatus?: string;
+  }>
 ) {
   let inTransit = 0;
   let atSchools = 0;
   let returnedTotal = 0;
+  let missingOrDiscrepancy = 0;
 
   for (const batch of batches) {
+    if (batch.batchStatus === 'voided') continue;
+    const sent = Math.max(0, Number(batch.omprengCount) || 0);
+    const hasReceived =
+      batch.omprengReceivedCount !== undefined && batch.omprengReceivedCount !== null;
+    const received = hasReceived
+      ? Math.max(0, Math.min(sent, Number(batch.omprengReceivedCount) || 0))
+      : sent;
+    const diff = Math.max(0, sent - received);
+
     if (batch.omprengStatus === 'dispatched') {
-      inTransit += batch.omprengCount;
-    } else if (batch.omprengStatus === 'received_school') {
-      atSchools += batch.omprengCount;
+      inTransit += sent;
+    } else if (
+      batch.omprengStatus === 'received_school' ||
+      batch.omprengStatus === 'ready_pickup'
+    ) {
+      atSchools += received;
+      missingOrDiscrepancy += diff;
     } else if (batch.omprengStatus === 'returned_sterilized') {
-      returnedTotal += batch.omprengCount;
+      returnedTotal += received;
+      missingOrDiscrepancy += diff;
     }
   }
 
   const outOfKitchen = inTransit + atSchools;
-  const inKitchen = Math.max(0, totalInventory - outOfKitchen);
+  const inKitchen = Math.max(0, totalInventory - outOfKitchen - missingOrDiscrepancy);
 
   return {
     totalInventory,
@@ -181,5 +244,48 @@ export function calculateOmprengTelemetry(
     atSchools,
     outOfKitchen,
     returnedTotal,
+    missingOrDiscrepancy,
   };
+}
+
+/**
+ * Computes midnight (00:00:00.000) of the current WIB (UTC+7) day as UTC epoch ms.
+ */
+export function getWibStartOfDayMs(epochMs: number): number {
+  const wibDate = new Date(epochMs + WIB_OFFSET_HOURS * MS_PER_HOUR);
+  wibDate.setUTCHours(0, 0, 0, 0);
+  return wibDate.getTime() - WIB_OFFSET_HOURS * MS_PER_HOUR;
+}
+
+/**
+ * Classifies high-risk perishable dish names while exempting sterile/packaged UHT dairy.
+ * Mirrors PostgreSQL server-side clamping rules in `seal_production_batch`.
+ */
+export function isPerishableHighRiskName(name: string, explicitHighRisk: boolean = false): boolean {
+  if (explicitHighRisk) return true;
+  const lower = (name || '').toLowerCase();
+  if (/(santan|kuah|soto|lodeh|gulai|opor|sop)/.test(lower)) {
+    return true;
+  }
+  if (/susu/.test(lower) && !/(uht|kotak|kemasan|botol|steril)/.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Detects offline clock rollback across app restarts/force-close by comparing
+ * current estimated server time (local clock + cached drift) against last verified server epoch.
+ */
+export function detectOfflineClockRollback(
+  localNowMs: number,
+  cachedDriftMs: number,
+  lastKnownServerMs?: number | null,
+  toleranceMs: number = 5 * 60 * 1000
+): boolean {
+  if (!lastKnownServerMs || !Number.isFinite(lastKnownServerMs) || lastKnownServerMs <= 0) {
+    return false;
+  }
+  const estimatedNowMs = localNowMs + (Number.isFinite(cachedDriftMs) ? cachedDriftMs : 0);
+  return estimatedNowMs + toleranceMs < lastKnownServerMs;
 }
